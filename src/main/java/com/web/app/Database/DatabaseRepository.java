@@ -7,6 +7,7 @@ import com.web.app.Api.Entity.SpecEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class DatabaseRepository implements CustomRepository {
     }
 
     @Override
-    public List<ProductEntity> search(SearchDTO query) {
+    public List<ProductEntity> search(SearchDTO query, Pageable page) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
@@ -123,6 +124,8 @@ public class DatabaseRepository implements CustomRepository {
 
         return entityManager
                 .createQuery(cq)
+                .setMaxResults(page.getPageSize())
+                .setFirstResult((int) page.getOffset())
                 .getResultList();
     }
 

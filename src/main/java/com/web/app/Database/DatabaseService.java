@@ -4,6 +4,7 @@ import com.web.app.Api.DTO.ProductDTO;
 import com.web.app.Api.DTO.SearchDTO;
 import com.web.app.Api.Entity.ProductEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,8 +15,8 @@ public class DatabaseService  {
     @Autowired
     private DatabaseRepository databaseRepository;
 
-    public List<ProductDTO> getProducts(SearchDTO searchDTO) {
-        List<ProductEntity> products = databaseRepository.search(searchDTO);
+    public List<ProductDTO> getProducts(SearchDTO searchDTO, Pageable page) {
+        List<ProductEntity> products = databaseRepository.search(searchDTO, page);
 
         if (products.isEmpty()) return null;
 

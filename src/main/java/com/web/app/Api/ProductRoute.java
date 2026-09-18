@@ -4,6 +4,7 @@ import com.web.app.Api.DTO.ProductDTO;
 import com.web.app.Api.DTO.SearchDTO;
 import com.web.app.Database.DatabaseService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,11 +32,23 @@ public class ProductRoute {
         return ResponseEntity.ok(product);
     }
 
+    @GetMapping("/products")
+    private ResponseEntity<List<ProductDTO>> getProduct(@RequestParam String name, @RequestParam String compare_name) {
+
+        List<ProductDTO> product = productService.getProducts(name, compare_name);
+
+        if (product == null) return ResponseEntity.notFound().build();
+
+        return ResponseEntity.ok(product);
+    }
+
     @GetMapping("/search")
-    private ResponseEntity<List<ProductDTO>> searchProduct(@RequestParam Map<String, Object> queryParams) {
+    private ResponseEntity<List<ProductDTO>> searchProduct(@RequestParam Map<String, Object> queryParams, Pageable page) {
         SearchDTO searchDTO = SearchDTO.fromMap(queryParams);
 
-        List<ProductDTO> products = productService.getProducts(searchDTO);
+        System.out.println(page.getPageNumber());
+
+        List<ProductDTO> products = productService.getProducts(searchDTO, page);
 
         if (products == null) {
             return ResponseEntity.notFound().build();
@@ -43,6 +56,4 @@ public class ProductRoute {
 
         return ResponseEntity.ok(products);
     }
-
-
 }

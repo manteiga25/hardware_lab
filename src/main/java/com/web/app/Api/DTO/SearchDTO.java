@@ -39,18 +39,20 @@ public record SearchDTO (String productName,
 
     public static SearchDTO fromMap(Map<String, Object> map) {
 
-        String productName = (String) map.get("name");
-        String brand = (String) map.get("brand");
-        String socketName = (String) map.get("socketName");
-        String family = (String) map.get("family");
+        // Query parameters always arrive as Strings, so every value is parsed explicitly.
+        // Invalid values throw IllegalArgumentException, which the controller maps to 400.
+        String productName = toText(map.get("name"));
+        String brand = toText(map.get("brand"));
+        String socketName = toText(map.get("socketName"));
+        String family = toText(map.get("family"));
 
-        Integer minCoreCount = (Integer) map.get("minCoreCount");
-        Integer maxCoreCount = (Integer) map.get("maxCoreCount");
+        Integer minCoreCount = toInteger(map.get("minCoreCount"));
+        Integer maxCoreCount = toInteger(map.get("maxCoreCount"));
 
-        Integer minThreadCount = (Integer) map.get("minThreadCount");
-        Integer maxThreadCount = (Integer) map.get("maxThreadCount");
+        Integer minThreadCount = toInteger(map.get("minThreadCount"));
+        Integer maxThreadCount = toInteger(map.get("maxThreadCount"));
 
-        Boolean hasHyperthread = (Boolean) map.get("hasHyperthread");
+        Boolean hasHyperthread = toBoolean(map.get("hasHyperthread"));
 
         BigDecimal minBaseClock = toBigDecimal(map.get("minBaseClock"));
         BigDecimal maxBaseClock = toBigDecimal(map.get("maxBaseClock"));
@@ -58,11 +60,11 @@ public record SearchDTO (String productName,
         BigDecimal minBoostClock = toBigDecimal(map.get("minBoostClock"));
         BigDecimal maxBoostClock = toBigDecimal(map.get("maxBoostClock"));
 
-        Integer minTdp = (Integer) map.get("minTdp");
-        Integer maxTdp = (Integer) map.get("maxTdp");
+        Integer minTdp = toInteger(map.get("minTdp"));
+        Integer maxTdp = toInteger(map.get("maxTdp"));
 
-        Integer minComputeRank = (Integer) map.get("minComputeRank");
-        Integer maxComputeRank = (Integer) map.get("maxComputeRank");
+        Integer minComputeRank = toInteger(map.get("minComputeRank"));
+        Integer maxComputeRank = toInteger(map.get("maxComputeRank"));
 
         BigDecimal minCost = toBigDecimal(map.get("minCost"));
         BigDecimal maxCost = toBigDecimal(map.get("maxCost"));
@@ -70,7 +72,7 @@ public record SearchDTO (String productName,
         LocalDate minReleaseDate = toLocalDate(map.get("minReleaseDate"));
         LocalDate maxReleaseDate = toLocalDate(map.get("maxReleaseDate"));
 
-        Boolean isCpu = (Boolean) map.get("isCpu");
+        Boolean isCpu = toBoolean(map.get("isCpu"));
 
         return new SearchDTO(
                 productName,
@@ -108,12 +110,46 @@ public record SearchDTO (String productName,
         );
     }
 
+    private static String toText(Object value) {
+        if (value == null || value.toString().isBlank()) return null;
+        return value.toString().trim();
+    }
+
+    private static Integer toInteger(Object value) {
+        return switch (value) {
+            case null -> null;
+            case Integer integer -> integer;
+            case Number number -> number.intValue();
+            default -> {
+                String text = toText(value);
+                yield text == null ? null : Integer.valueOf(text);
+            }
+        };
+    }
+
+    private static Boolean toBoolean(Object value) {
+        return switch (value) {
+            case null -> null;
+            case Boolean bool -> bool;
+            default -> {
+                String text = toText(value);
+                if (text == null) yield null;
+                if (text.equalsIgnoreCase("true")) yield true;
+                if (text.equalsIgnoreCase("false")) yield false;
+                throw new IllegalArgumentException("Invalid boolean: " + text);
+            }
+        };
+    }
+
     private static BigDecimal toBigDecimal(Object value) {
         return switch (value) {
             case null -> null;
             case BigDecimal bd -> bd;
             case Number number -> BigDecimal.valueOf(number.doubleValue());
-            default -> new BigDecimal(value.toString());
+            default -> {
+                String text = toText(value);
+                yield text == null ? null : new BigDecimal(text);
+            }
         };
 
     }
@@ -122,7 +158,10 @@ public record SearchDTO (String productName,
         return switch (value) {
             case null -> null;
             case LocalDate date -> date;
-            default -> LocalDate.parse(value.toString());
+            default -> {
+                String text = toText(value);
+                yield text == null ? null : LocalDate.parse(text);
+            }
         };
     }
 }

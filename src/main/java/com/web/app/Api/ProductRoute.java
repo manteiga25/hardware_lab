@@ -7,11 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.DateTimeException;
 import java.util.List;
 import java.util.Map;
 
@@ -55,5 +57,11 @@ public class ProductRoute {
         }
 
         return ResponseEntity.ok(products);
+    }
+
+    // Malformed numbers, dates, booleans or sort keys are client errors, not server errors.
+    @ExceptionHandler({IllegalArgumentException.class, DateTimeException.class})
+    private ResponseEntity<Void> badRequest() {
+        return ResponseEntity.badRequest().build();
     }
 }

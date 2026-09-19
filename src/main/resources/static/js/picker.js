@@ -5,158 +5,150 @@ import * as m from './metrics.js';
 
 const MIN_QUERY = 2;
 const DEBOUNCE_MS = 200;
+let pickerCount = 0;
 
 function optionMeta(p) {
-  const parts = [`#${fmt.number(m.rank(p))} no ranking`];
-  if (m.cores(p)) parts.push(fmt.plural(m.cores(p), 'núcleo', 'núcleos'));
+  const parts = [];
+  if (m.isGpu(p)) {
+    const idx = m.performanceIndex(p);
+    parts.push(idx !== null ? `índice ${fmt.index(idx)}` : 'sem índice');
+    if (m.memoryMb(p)) parts.push(fmt.memory(m.memoryMb(p)));
+  } else {
+    parts.push(`#${fmt.number(m.rank(p))} no ranking`);
+    if (m.cores(p)) parts.push(fmt.plural(m.cores(p), 'núcleo', 'núcleos'));
+  }
   parts.push(m.price(p) ? fmt.money(m.price(p)) : 'sem preço');
   return parts.join(', ');
 }
 
-// Accessible combobox (ARIA 1.2 pattern) backed by /API/search.
-export class Picker {
-  constructor(input, { onChange }) {
-    this.input = input;
-    this.list = document.getElementById(input.getAttribute('aria-controls'));
-    this.onChange = onChange;
-    this.product = null;
-    this.options = [];
-    this.active = -1;
-    this.timer = 0;
-    this.controller = null;
+/**
+ * Search field with suggestions (ARIA 1.2 combobox) backed by /API/search.
+ * Calls onPick(product) when a suggestion is chosen. `exclude` hides names already in use and
+ * `params` narrows the search (for example { isCpu: false, sort: 'rank,desc' } for graphics cards).
+ */
+export function createPicker({ label, placeholder, exclude = [], params = {}, onPick }) {
+  const id = `picker-${++pickerCount}`;
+  const input = h('input', {
+    id,
+    type: 'text',
+    role: 'combobox',
+    autocomplete: 'off',
+    spellcheck: 'false',
+    'aria-autocomplete': 'list',
+    'aria-expanded': 'false',
+    'aria-controls': `${id}-list`,
+    placeholder,
+  });
+  const list = h('ul', { id: `${id}-list`, class: 'listbox', role: 'listbox', 'aria-label': label, hidden: true });
+  const element = h('div', { class: 'picker' },
+    h('label', { for: id, text: label }),
+    h('div', { class: 'combo' }, input, list));
 
-    input.addEventListener('input', () => this.handleInput());
-    input.addEventListener('keydown', (event) => this.handleKey(event));
-    input.addEventListener('focus', () => { if (!this.product && this.options.length) this.open(); });
-    input.addEventListener('blur', () => this.close());
-    // Keep focus in the input while clicking an option.
-    this.list.addEventListener('mousedown', (event) => event.preventDefault());
+  let options = [];
+  let active = -1;
+  let timer = 0;
+  let controller = null;
+
+  function open() {
+    list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
   }
 
-  get text() {
-    return this.input.value.trim();
+  function close() {
+    list.hidden = true;
+    active = -1;
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
   }
 
-  set(product) {
-    this.product = product;
-    this.input.value = product ? product.productName : '';
-    this.options = [];
-    this.close();
+  function showStatus(text) {
+    active = -1;
+    list.replaceChildren(h('li', { class: 'listbox-status', role: 'option', 'aria-disabled': 'true', text }));
+    open();
   }
 
-  handleInput() {
-    if (this.product) {
-      this.product = null;
-      this.onChange(null);
-    }
-
-    clearTimeout(this.timer);
-    const query = this.text;
-
-    if (query.length < MIN_QUERY) {
-      this.controller?.abort();
-      this.options = [];
-      this.close();
+  function renderOptions() {
+    if (!options.length) {
+      showStatus('Nenhum processador com esse nome.');
       return;
     }
-
-    this.timer = setTimeout(() => this.load(query), DEBOUNCE_MS);
-  }
-
-  async load(query) {
-    this.controller?.abort();
-    const controller = new AbortController();
-    this.controller = controller;
-    this.showStatus('A procurar…');
-
-    try {
-      const results = await api.searchProducts({ name: query, size: 8, sort: 'rank,asc' }, controller.signal);
-      if (controller !== this.controller) return;
-      this.options = results;
-      this.renderOptions();
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      this.options = [];
-      this.showStatus('Não foi possível carregar sugestões. Tenta outra vez.');
-    }
-  }
-
-  renderOptions() {
-    if (!this.options.length) {
-      this.showStatus('Nenhum processador com esse nome.');
-      return;
-    }
-
-    this.active = -1;
-    this.list.replaceChildren(...this.options.map((p, i) => h('li', {
-      id: `${this.list.id}-${i}`,
+    active = -1;
+    list.replaceChildren(...options.map((p, i) => h('li', {
+      id: `${id}-option-${i}`,
       class: 'option',
       role: 'option',
       'aria-selected': 'false',
-      onclick: () => this.choose(i),
+      onclick: () => choose(i),
     },
     h('span', { class: 'option-name', text: p.productName }),
     h('span', { class: 'option-meta', text: optionMeta(p) }))));
-    this.open();
+    open();
   }
 
-  showStatus(text) {
-    this.active = -1;
-    this.list.replaceChildren(h('li', { class: 'listbox-status', role: 'option', 'aria-disabled': 'true', text }));
-    this.open();
-  }
+  async function load(query) {
+    controller?.abort();
+    const current = new AbortController();
+    controller = current;
+    showStatus('A procurar…');
 
-  handleKey(event) {
-    const isOpen = !this.list.hidden && this.options.length > 0;
-
-    switch (event.key) {
-      case 'ArrowDown':
-      case 'ArrowUp':
-        if (!isOpen) return;
-        event.preventDefault();
-        this.move(event.key === 'ArrowDown' ? 1 : -1);
-        break;
-      case 'Enter':
-        if (isOpen && this.active >= 0) {
-          event.preventDefault();
-          this.choose(this.active);
-        }
-        break;
-      case 'Escape':
-        if (!this.list.hidden) {
-          event.preventDefault();
-          this.close();
-        }
-        break;
+    try {
+      const results = await api.searchProducts({ sort: 'rank,asc', ...params, name: query, size: 8 }, current.signal);
+      if (current !== controller) return;
+      options = results.filter((p) => !exclude.includes(p.productName));
+      renderOptions();
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      options = [];
+      showStatus('Não foi possível carregar sugestões. Tenta outra vez.');
     }
   }
 
-  move(step) {
-    const count = this.options.length;
-    this.active = (this.active + step + count) % count;
-
-    [...this.list.children].forEach((li, i) => li.setAttribute('aria-selected', String(i === this.active)));
-    const current = this.list.children[this.active];
-    this.input.setAttribute('aria-activedescendant', current.id);
+  function move(step) {
+    active = (active + step + options.length) % options.length;
+    [...list.children].forEach((li, i) => li.setAttribute('aria-selected', String(i === active)));
+    const current = list.children[active];
+    input.setAttribute('aria-activedescendant', current.id);
     current.scrollIntoView({ block: 'nearest' });
   }
 
-  choose(i) {
-    const product = this.options[i];
+  function choose(i) {
+    const product = options[i];
     if (!product) return;
-    this.set(product);
-    this.onChange(product);
+    input.value = product.productName;
+    close();
+    onPick(product);
   }
 
-  open() {
-    this.list.hidden = false;
-    this.input.setAttribute('aria-expanded', 'true');
-  }
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const query = input.value.trim();
+    if (query.length < MIN_QUERY) {
+      controller?.abort();
+      options = [];
+      close();
+      return;
+    }
+    timer = setTimeout(() => load(query), DEBOUNCE_MS);
+  });
 
-  close() {
-    this.list.hidden = true;
-    this.active = -1;
-    this.input.setAttribute('aria-expanded', 'false');
-    this.input.removeAttribute('aria-activedescendant');
-  }
+  input.addEventListener('keydown', (event) => {
+    const isOpen = !list.hidden && options.length > 0;
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && isOpen) {
+      event.preventDefault();
+      move(event.key === 'ArrowDown' ? 1 : -1);
+    } else if (event.key === 'Enter' && isOpen && active >= 0) {
+      event.preventDefault();
+      choose(active);
+    } else if (event.key === 'Escape' && !list.hidden) {
+      event.preventDefault();
+      close();
+    }
+  });
+
+  input.addEventListener('focus', () => { if (options.length) open(); });
+  input.addEventListener('blur', close);
+  // Keep focus in the input while clicking an option.
+  list.addEventListener('mousedown', (event) => event.preventDefault());
+
+  return { element, focus: () => input.focus() };
 }

@@ -1,9 +1,7 @@
 package com.web.app.Api.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -38,36 +36,4 @@ public class SpecEntity {
 
     @Column(name = "compute_rank", nullable = false, unique = true)
     private Short computeRank;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public Short getCoreCount() {
-        return coreCount;
-    }
-
-    public Short getThreadCount() {
-        return threadCount;
-    }
-
-    public Boolean getHasHyperthread() {
-        return hasHyperthread;
-    }
-
-    public BigDecimal getBaseClock() {
-        return baseClock;
-    }
-
-    public BigDecimal getBoostClock() {
-        return boostClock;
-    }
-
-    public Short getTdp() {
-        return tdp;
-    }
-
-    public Short getComputeRank() {
-        return computeRank;
-    }
 }

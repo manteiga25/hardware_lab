@@ -1,15 +1,15 @@
 package com.web.app.Api.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "Product")
+@Getter
+@Setter
 public class ProductEntity {
 
     @Id
@@ -31,6 +31,9 @@ public class ProductEntity {
     @Column(name = "release_date", nullable = false)
     private LocalDate releaseDate;
 
+    @Column(name = "release_date_precision", nullable = false)
+    private DatePrecision releaseDatePrecision;
+
     @OneToOne
     @JoinColumn(name = "spec", nullable = false, unique = true)
     private SpecEntity spec;
@@ -42,39 +45,7 @@ public class ProductEntity {
     @Column(name = "is_cpu", nullable = false)
     private Boolean isCpu;
 
-    public String getFamily() {
-        return family;
-    }
-
-    public LocalDate getReleaseDate() {
-        return releaseDate;
-    }
-
-    public SpecEntity getSpec() {
-        return spec;
-    }
-
-    public CostEntity getCost() {
-        return cost;
-    }
-
-    public Boolean getCpu() {
-        return isCpu;
-    }
-
-    public String getSocketName() {
-        return socketName;
-    }
-
-    public String getBrand() {
-        return brand;
-    }
-
-    public String getProductName() {
-        return productName;
-    }
-
-    public Integer getId() {
-        return id;
-    }
+    @OneToOne
+    @JoinColumn(name = "gpu_spec", unique = true)
+    private GpuSpecEntity gpuSpec;
 }

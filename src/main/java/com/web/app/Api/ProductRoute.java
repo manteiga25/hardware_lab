@@ -9,13 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.DateTimeException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/API")
@@ -40,6 +40,8 @@ public class ProductRoute {
         List<ProductDTO> product = productService.getProducts(name, compare_name);
 
         if (product == null) return ResponseEntity.notFound().build();
+        // A CPU cannot be compared with a GPU. Objects.equals compares the Boolean values, not references.
+        if (!Objects.equals(product.getFirst().isCpu(), product.getLast().isCpu())) return ResponseEntity.badRequest().build();
 
         return ResponseEntity.ok(product);
     }
@@ -47,8 +49,6 @@ public class ProductRoute {
     @GetMapping("/search")
     private ResponseEntity<List<ProductDTO>> searchProduct(@RequestParam Map<String, Object> queryParams, Pageable page) {
         SearchDTO searchDTO = SearchDTO.fromMap(queryParams);
-
-        System.out.println(page.getPageNumber());
 
         List<ProductDTO> products = productService.getProducts(searchDTO, page);
 

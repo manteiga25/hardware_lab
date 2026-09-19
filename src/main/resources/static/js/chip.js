@@ -1,12 +1,12 @@
-// Desktop-only hero illustration. main.js imports this module dynamically and only when
-// the device has a large screen and a fine pointer, so phones never download or run it.
+// Desktop-only illustration of a processor chip. illustration-host.js imports this module
+// dynamically and only on large screens with a fine pointer, so phones never download or run it.
 //
-// The die shows one lit cell per core of the last processor picked, and the moving
-// packets speed up with its turbo clock and grow in number with its threads.
+// It draws whatever `visual` categories.js describes: for a CPU, one lit die cell per core;
+// for a laptop or integrated GPU, lit cells that follow the performance index. The moving
+// packets speed up with the clock and grow in number with `lanes`.
 
 import { h, svg } from './dom.js';
-import * as fmt from './format.js';
-import * as m from './metrics.js';
+import { attachTilt, createLoop } from './motion.js';
 
 const SIZE = 520;
 const CENTER = SIZE / 2;
@@ -17,11 +17,11 @@ const PIN_PITCH = 17;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function gridSizeFor(cores) {
-  if (!cores || cores <= 4) return 2;
-  if (cores <= 9) return 3;
-  if (cores <= 16) return 4;
-  if (cores <= 36) return 6;
+function gridSizeFor(count) {
+  if (!count || count <= 4) return 2;
+  if (count <= 9) return 3;
+  if (count <= 16) return 4;
+  if (count <= 36) return 6;
   return 8;
 }
 
@@ -81,24 +81,20 @@ function buildSvg() {
   return { root, sides, cellLayer };
 }
 
-export function mountChip(container, { reducedMotion }) {
+export function mount(container, { reducedMotion }) {
   const { root, sides, cellLayer } = buildSvg();
-  const caption = h('p', { class: 'chip-caption' });
-  const stage = h('div', { class: 'chip-stage' }, root, caption);
+  const caption = h('p', { class: 'illustration-caption' });
+  const stage = h('div', { class: 'illustration-stage' }, root, caption);
   container.replaceChildren(stage);
 
   const allPaths = sides.flatMap(({ group, paths }) => paths.map((path) => ({ group, path, length: path.getTotalLength() })));
 
   let cells = [];
-  let product = null;
+  let idle = true;
   let packets = [];
   let speed = 55;
-  let frame = 0;
-  let visible = true;
-  let lastTime = 0;
 
-  function layoutCells(cores) {
-    const n = gridSizeFor(cores);
+  function layoutCells(n) {
     const size = (DIE.size - DIE.pad * 2 - DIE.gap * (n - 1)) / n;
     cellLayer.replaceChildren();
     cells = [];
@@ -119,11 +115,11 @@ export function mountChip(container, { reducedMotion }) {
     }
   }
 
-  function lightCores(cores) {
+  function lightCells(count) {
     cells.forEach((cell, i) => {
       if (!reducedMotion) cell.style.transitionDelay = `${i * 25}ms`;
       // Defer one frame so the transition runs from the unlit state.
-      requestAnimationFrame(() => cell.classList.toggle('is-on', i < cores));
+      requestAnimationFrame(() => cell.classList.toggle('is-on', i < count));
     });
   }
 
@@ -147,11 +143,7 @@ export function mountChip(container, { reducedMotion }) {
     }
   }
 
-  function step(time) {
-    frame = 0;
-    const dt = Math.min((time - (lastTime || time)) / 1000, 0.05);
-    lastTime = time;
-
+  const loop = createLoop(stage, (dt, time) => {
     for (const packet of packets) {
       packet.travelled += speed * packet.speedFactor * dt;
       if (packet.travelled >= packet.length) spawn(packet, false);
@@ -162,80 +154,40 @@ export function mountChip(container, { reducedMotion }) {
       packet.el.setAttribute('y', point.y - 3.5);
     }
 
-    // Idle state: a single cell walks across the die until a processor is picked.
-    if (!product && cells.length) {
+    // Idle state: a single cell walks across the die until a product is shown.
+    if (idle && cells.length) {
       const active = Math.floor(time / 320) % cells.length;
       cells.forEach((cell, i) => cell.classList.toggle('is-scan', i === active));
     }
+  }, { enabled: !reducedMotion });
 
-    schedule();
-  }
+  const detachTilt = attachTilt(root, { enabled: !reducedMotion });
 
-  function schedule() {
-    if (!frame && visible && !reducedMotion) frame = requestAnimationFrame(step);
-  }
+  function show(visual) {
+    idle = !visual || visual.idle;
 
-  // Pause entirely while the hero is scrolled out of view.
-  const observer = new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
-    lastTime = 0;
-    if (visible) schedule();
-    else if (frame) {
-      cancelAnimationFrame(frame);
-      frame = 0;
-    }
-  });
-  observer.observe(stage);
-
-  // Small tilt towards the pointer while it moves over the hero.
-  const hero = container.closest('.hero') ?? container;
-  function onPointerMove(event) {
-    const rect = hero.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    root.style.transform = `rotateX(${clamp(-y * 10, -6, 6)}deg) rotateY(${clamp(x * 12, -7, 7)}deg)`;
-  }
-  function onPointerLeave() {
-    root.style.transform = '';
-  }
-  if (!reducedMotion) {
-    hero.addEventListener('pointermove', onPointerMove);
-    hero.addEventListener('pointerleave', onPointerLeave);
-  }
-
-  function show(next) {
-    product = next;
-    const cores = next ? m.cores(next) ?? 0 : 0;
-    layoutCells(next ? cores : 16);
-
-    if (next) {
-      lightCores(Math.min(cores, cells.length));
-      const boost = m.boostClock(next) ?? m.baseClock(next) ?? 3;
-      speed = 55 * clamp(boost / 4, 0.6, 1.6);
-      setPacketCount(reducedMotion ? 0 : clamp(Math.round((m.threads(next) ?? 4) * 0.6), 6, 28));
-
-      const specs = [fmt.plural(cores, 'núcleo', 'núcleos')];
-      if (m.threads(next)) specs.push(fmt.plural(m.threads(next), 'thread', 'threads'));
-      if (m.boostClock(next)) specs.push(`até ${fmt.ghz(m.boostClock(next))}`);
-      caption.replaceChildren(h('strong', { text: next.productName }), specs.join(', '));
-    } else {
+    if (idle) {
+      layoutCells(4);
       speed = 55;
       setPacketCount(reducedMotion ? 0 : 12);
       caption.replaceChildren();
+    } else {
+      const n = visual.grid ?? gridSizeFor(visual.lit);
+      layoutCells(n);
+      lightCells(Math.min(visual.lit, n * n));
+      speed = 55 * clamp(visual.clockGHz / 4, 0.6, 1.6);
+      setPacketCount(reducedMotion ? 0 : clamp(visual.lanes, 6, 28));
+      caption.replaceChildren(h('strong', { text: visual.title }), visual.detail);
     }
 
-    schedule();
+    loop.start();
   }
 
   function destroy() {
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
-    observer.disconnect();
-    hero.removeEventListener('pointermove', onPointerMove);
-    hero.removeEventListener('pointerleave', onPointerLeave);
+    loop.destroy();
+    detachTilt();
     container.replaceChildren();
   }
 
-  show(null);
   return { show, destroy };
 }

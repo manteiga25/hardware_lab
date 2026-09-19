@@ -1,13 +1,7 @@
 package com.web.app.Api.DTO;
 
-import com.web.app.Api.Entity.CostEntity;
+import com.web.app.Api.Entity.DatePrecision;
 import com.web.app.Api.Entity.ProductEntity;
-import com.web.app.Api.Entity.SpecEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.time.LocalDate;
 
@@ -17,9 +11,11 @@ public record ProductDTO(
         String socketName,
         String family,
         LocalDate releaseDate,
+        DatePrecision releaseDatePrecision,
         Boolean isCpu,
         SpecDTO spec,
-        CostDTO cost
+        CostDTO cost,
+        GpuSpecDTO gpuSpec
 ) {
 
     public static ProductDTO fromEntity(ProductEntity product) {
@@ -29,9 +25,11 @@ public record ProductDTO(
                 product.getSocketName(),
                 product.getFamily(),
                 product.getReleaseDate(),
-                product.getCpu(),
+                product.getReleaseDatePrecision(),
+                product.getIsCpu(),
                 SpecDTO.fromEntity(product.getSpec()),
-                CostDTO.fromEntity(product.getCost())
+                CostDTO.fromEntity(product.getCost()),
+                GpuSpecDTO.fromEntity(product.getGpuSpec())
         );
     }
 }

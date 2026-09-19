@@ -1,7 +1,6 @@
 package com.web.app.Api.DTO;
 
 import com.web.app.Api.Entity.SpecEntity;
-import jakarta.persistence.Column;
 
 import java.math.BigDecimal;
 
@@ -16,7 +15,7 @@ public record SpecDTO(
 ) {
 
     public static SpecDTO fromEntity(SpecEntity spec) {
-        return new SpecDTO(
+        return spec == null ? null : new SpecDTO(
                 spec.getCoreCount(),
                 spec.getThreadCount(),
                 spec.getHasHyperthread(),

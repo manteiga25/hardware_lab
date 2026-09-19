@@ -1,5 +1,7 @@
 package com.web.app.Api.DTO;
 
+import com.web.app.Api.Entity.FormFactor;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
@@ -35,7 +37,12 @@ public record SearchDTO (String productName,
                          LocalDate minReleaseDate,
                          LocalDate maxReleaseDate,
 
-                         Boolean isCpu) {
+                         Boolean isCpu,
+
+                         // GPU only
+                         FormFactor formFactor,
+                         Integer minMemoryMb,
+                         Boolean hasRayTracing) {
 
     public static SearchDTO fromMap(Map<String, Object> map) {
 
@@ -74,6 +81,11 @@ public record SearchDTO (String productName,
 
         Boolean isCpu = toBoolean(map.get("isCpu"));
 
+        String formFactorText = toText(map.get("formFactor"));
+        FormFactor formFactor = formFactorText == null ? null : FormFactor.fromDbValue(formFactorText);
+        Integer minMemoryMb = toInteger(map.get("minMemoryMb"));
+        Boolean hasRayTracing = toBoolean(map.get("hasRayTracing"));
+
         return new SearchDTO(
                 productName,
                 brand,
@@ -106,7 +118,11 @@ public record SearchDTO (String productName,
                 minReleaseDate,
                 maxReleaseDate,
 
-                isCpu
+                isCpu,
+
+                formFactor,
+                minMemoryMb,
+                hasRayTracing
         );
     }
 

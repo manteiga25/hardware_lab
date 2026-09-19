@@ -24,20 +24,4 @@ public class CostEntity {
 
     @Column(name = "cost_per_rank_point", precision = 8, scale = 2)
     private BigDecimal costPerRankPoint = BigDecimal.ZERO;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public BigDecimal getCost() {
-        return cost;
-    }
-
-    public BigDecimal getCostPerCore() {
-        return costPerCore;
-    }
-
-    public BigDecimal getCostPerRankPoint() {
-        return costPerRankPoint;
-    }
 }

@@ -8,15 +8,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DatabaseService  {
 
     @Autowired
-    private DatabaseRepository databaseRepository;
+    private RepositoryImp databaseRepository;
 
     public List<ProductDTO> getProducts(SearchDTO searchDTO, Pageable page) {
         List<ProductEntity> products = databaseRepository.search(searchDTO, page);
+
+        System.out.println("Products found: " + products);
 
         if (products.isEmpty()) return null;
 
@@ -24,15 +27,14 @@ public class DatabaseService  {
     }
 
     public ProductDTO getProduct(String name) {
-        ProductEntity products = databaseRepository.getProductByName(name);
+        Optional<ProductEntity> product = databaseRepository.findByProductName(name);
 
-        if (products == null) return null;
+        return product.map(ProductDTO::fromEntity).orElse(null);
 
-        return ProductDTO.fromEntity(products);
     }
 
     public List<ProductDTO> getProducts(String prod_name, String prod_compare_name) {
-        List<ProductEntity> products = databaseRepository.getProductsByName(new String[]{prod_name, prod_compare_name});
+        List<ProductEntity> products = databaseRepository.findByProductNameIn(new String[]{prod_name, prod_compare_name});
 
         if (products.isEmpty()) return null;
 

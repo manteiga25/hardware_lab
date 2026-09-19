@@ -1,24 +1,19 @@
 import * as api from './api.js';
-import { CURRENCY_NOTE, number } from './format.js';
-import { Picker } from './picker.js';
-import { initSearch } from './search.js';
-import { renderComparison, renderComparisonError, renderComparisonLoading } from './compare.js';
+import { h } from './dom.js';
+import { CURRENCY_NOTE, SITE_NAME, number, shortName } from './format.js';
+import { CATEGORIES, categoryOf } from './categories.js';
+import { go, isRoute, parse, paths } from './router.js';
+import { selection } from './selection.js';
+import { placeIllustration, showOnIllustration } from './illustration-host.js';
+import { createList } from './views/list.js';
+import { renderDetail } from './views/detail.js';
+import { renderCompare } from './views/compare.js';
 
 const $ = (id) => document.getElementById(id);
-
-const state = {
-  slots: { a: null, b: null },
-  maxRank: null,
-  comparedKey: null,
-  lastPicked: null,
-};
-
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const desktop = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+const main = $('conteudo');
 
 const maxRankReady = api.getMaxRank()
   .then((value) => {
-    state.maxRank = value;
     if (value) document.querySelector('[data-max-rank-note]').textContent = ` (neste momento, ${number(value)})`;
     return value;
   })
@@ -26,227 +21,155 @@ const maxRankReady = api.getMaxRank()
 
 $('currency-note').textContent = CURRENCY_NOTE;
 
-/* Desktop-only chip ---------------------------------------------------- */
+/* Views --------------------------------------------------------------- */
 
-let chip = null;
-let chipLoading = null;
+// One list per category, each keeping its own filters, page and scroll position.
+const lists = Object.fromEntries(Object.values(CATEGORIES).map((category) => {
+  const list = createList(category, {
+    maxRankReady,
+    // While searching by name, the illustration previews the first result.
+    onResults: (products, query) => {
+      if (current?.name === 'list' && current.type === category.key) {
+        showOnIllustration(category.illustration(query && products.length ? products[0] : null));
+      }
+    },
+  });
+  main.insertBefore(list.root, main.firstChild);
+  return [category.key, list];
+}));
 
-async function syncChip() {
-  const wanted = desktop.matches;
+const views = Object.fromEntries([...document.querySelectorAll('[data-view]')].map((el) => [el.dataset.view, el]));
 
-  if (chip && (!wanted || chip.reducedMotion !== reduceMotion.matches)) {
-    chip.instance.destroy();
-    chip = null;
-  }
-  if (!wanted || chip || chipLoading) return;
+/* Routing ------------------------------------------------------------- */
 
-  chipLoading = import('./chip.js');
-  try {
-    const { mountChip } = await chipLoading;
-    if (!desktop.matches) return;
-    chip = {
-      reducedMotion: reduceMotion.matches,
-      instance: mountChip($('hero-visual'), { reducedMotion: reduceMotion.matches }),
-    };
-    chip.instance.show(state.lastPicked);
-  } finally {
-    chipLoading = null;
-  }
+let current = null; // { name, type }
+const listScroll = { cpu: 0, gpu: 0 };
+let movedWithinApp = false;
+
+// "Voltar" returns to wherever the visitor came from inside the site, or to the list.
+function back() {
+  if (movedWithinApp) history.back();
+  else go(paths.list(current?.type ?? 'cpu'));
 }
 
-desktop.addEventListener('change', syncChip);
-reduceMotion.addEventListener('change', syncChip);
-syncChip();
-
-/* Slots ---------------------------------------------------------------- */
-
-const keyOf = (a, b) => (a && b ? `${a.productName}\n${b.productName}` : null);
-
-const pickers = {
-  a: new Picker($('pick-a'), { onChange: (p) => setSlot('a', p, { fromPicker: true }) }),
-  b: new Picker($('pick-b'), { onChange: (p) => setSlot('b', p, { fromPicker: true }) }),
+const context = {
+  maxRankReady,
+  back,
+  placeIllustration,
 };
 
-function setSlot(slot, product, { fromPicker = false } = {}) {
-  state.slots[slot] = product;
-  if (!fromPicker) pickers[slot].set(product);
-  if (product) {
-    state.lastPicked = product;
-    chip?.instance.show(product);
-  }
-  hideCompareError();
-  search.refreshPicked();
+async function route() {
+  if (!isRoute(location.hash)) return;
+
+  const { name, params } = parse(location.hash);
+  const previous = current;
+  if (previous?.name === 'list') listScroll[previous.type] = scrollY;
+  if (previous) movedWithinApp = true;
+
+  // The type is known from the URL for lists and product pages; comparisons find it out after loading.
+  const type = name === 'list' || name === 'detail' ? params[0] : null;
+  const next = { name, type };
+  current = next;
+
+  const viewKey = name === 'list' ? `list-${type}` : name;
+  for (const [key, el] of Object.entries(views)) el.hidden = key !== viewKey;
+  updateNav();
   updateTray();
-}
 
-function sideOf(name) {
-  if (state.slots.a?.productName === name) return 'A';
-  if (state.slots.b?.productName === name) return 'B';
-  return null;
-}
+  if (name === 'list') {
+    const category = CATEGORIES[type];
+    document.title = `${category.nav} | ${SITE_NAME}`;
+    placeIllustration(lists[type].illustrationSlot, category.illustration(null));
+    lists[type].enter();
+    scrollTo({ top: listScroll[type], behavior: 'instant' });
+  } else {
+    placeIllustration(null);
+    scrollTo({ top: 0, behavior: 'instant' });
 
-/* Comparison ----------------------------------------------------------- */
-
-const compareResult = $('compare-result');
-const compareEmpty = $('compare-empty');
-const compareError = $('compare-error');
-
-function showCompareError(message) {
-  compareError.textContent = message;
-  compareError.hidden = false;
-}
-
-function hideCompareError() {
-  compareError.hidden = true;
-}
-
-// Resolves text typed without picking a suggestion, using the exact-name endpoint.
-async function resolveTyped(slot) {
-  if (state.slots[slot]) return;
-  const typed = pickers[slot].text;
-  if (!typed) return;
-  const product = await api.getProduct(typed);
-  if (product) setSlot(slot, product);
-}
-
-// `fetched` means the slots already hold fresh data from /API/products (examples and shared links).
-async function compare({ scroll = true, fetched = false } = {}) {
-  hideCompareError();
-
-  try {
-    await Promise.all([resolveTyped('a'), resolveTyped('b')]);
-  } catch {
-    showCompareError('Não foi possível contactar o servidor. Tenta outra vez.');
-    return;
-  }
-
-  const { a, b } = state.slots;
-  if (!a || !b) {
-    const missing = !a && !b ? 'nos dois campos' : `no campo ${!a ? 'A' : 'B'}`;
-    showCompareError(`Escolhe um processador ${missing}. Escreve parte do nome e seleciona uma sugestão.`);
-    return;
-  }
-  if (a.productName === b.productName) {
-    showCompareError('Escolheste o mesmo processador duas vezes. Escolhe dois diferentes.');
-    return;
-  }
-
-  compareEmpty.hidden = true;
-  renderComparisonLoading(compareResult);
-  if (scroll) scrollToCompare();
-
-  try {
-    let productA = a;
-    let productB = b;
-    if (!fetched) {
-      // Fresh data for both products from the dedicated comparison endpoint.
-      const pair = await api.getPair(a.productName, b.productName);
-      const byName = new Map(pair.map((p) => [p.productName, p]));
-      productA = byName.get(a.productName) ?? a;
-      productB = byName.get(b.productName) ?? b;
+    if (name === 'detail') {
+      const product = await renderDetail(views.detail, params[1], context);
+      if (product && current === next) next.type = categoryOf(product).key;
     }
-    renderComparison(compareResult, productA, productB, await maxRankReady);
+    if (name === 'compare') {
+      const products = await renderCompare(views.compare, params[0], params[1], context);
+      if (products && current === next) next.type = categoryOf(products[0]).key;
+    }
+    if (name === 'method') document.title = `Como calculamos | ${SITE_NAME}`;
 
-    state.comparedKey = keyOf(a, b);
-    updateTray();
-    writeUrl(a, b);
-  } catch {
-    renderComparisonError(compareResult, 'Não foi possível carregar a comparação.', () => compare({ scroll: false }));
+    if (current === next) {
+      updateNav();
+      updateTray();
+    }
+  }
+
+  // Move keyboard and screen reader focus to the new page's heading (not on first load,
+  // and not if the visitor already moved on while this page was loading).
+  if (previous && current === next) {
+    views[viewKey].querySelector('h1')?.focus({ preventScroll: true });
   }
 }
 
-function scrollToCompare() {
-  const section = $('comparar');
-  section.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
-  section.focus({ preventScroll: true });
+// "page" on the list itself; "true" marks the section a product or comparison belongs to.
+function updateNav() {
+  document.querySelectorAll('[data-nav]').forEach((link) => {
+    const key = link.dataset.nav;
+    if (current.name === 'list' && key === current.type) link.setAttribute('aria-current', 'page');
+    else if (current.name === 'method' && key === 'method') link.setAttribute('aria-current', 'page');
+    else if ((current.name === 'detail' || current.name === 'compare') && key === current.type) link.setAttribute('aria-current', 'true');
+    else link.removeAttribute('aria-current');
+  });
 }
 
-$('compare-form').addEventListener('submit', (event) => {
+addEventListener('hashchange', route);
+
+// The skip link must not change the hash, which is used for routing.
+document.querySelector('[data-skip]').addEventListener('click', (event) => {
   event.preventDefault();
-  compare();
+  main.focus();
 });
 
-document.querySelectorAll('[data-example-a]').forEach((button) => {
-  button.addEventListener('click', () => loadPair(button.dataset.exampleA, button.dataset.exampleB));
-});
-
-async function loadPair(nameA, nameB, { scroll = true } = {}) {
-  hideCompareError();
-  try {
-    const pair = await api.getPair(nameA, nameB);
-    const byName = new Map(pair.map((p) => [p.productName, p]));
-    if (!byName.has(nameA) || !byName.has(nameB)) {
-      showCompareError('Um dos processadores deste link já não existe na base de dados.');
-      return;
-    }
-    setSlot('a', byName.get(nameA));
-    setSlot('b', byName.get(nameB));
-    await compare({ scroll, fetched: true });
-  } catch {
-    showCompareError('Não foi possível contactar o servidor. Tenta outra vez.');
-  }
-}
-
-/* Shareable URL: ?a=<name>&b=<name>#comparar --------------------------- */
-
-function writeUrl(a, b) {
-  const url = new URL(location.href);
-  url.searchParams.set('a', a.productName);
-  url.searchParams.set('b', b.productName);
-  url.hash = 'comparar';
-  history.replaceState(null, '', url);
-}
-
-function readUrl() {
-  const params = new URLSearchParams(location.search);
-  const a = params.get('a');
-  const b = params.get('b');
-  if (a && b) loadPair(a, b, { scroll: false });
-}
-
-/* Floating compare tray ------------------------------------------------ */
+/* Comparison tray ----------------------------------------------------- */
 
 const tray = $('tray');
-const compareForm = $('compare-form');
+const trayItems = $('tray-items');
+const trayHint = $('tray-hint');
+const trayCompare = $('tray-compare');
 
-// The observer only signals scroll changes; visibility is measured when the tray updates.
-new IntersectionObserver(() => updateTray()).observe(compareForm);
-
-function formInView() {
-  const rect = compareForm.getBoundingClientRect();
-  return rect.bottom > 0 && rect.top < innerHeight;
-}
-
+// Shown on lists and product pages, with the products picked in that category.
 function updateTray() {
-  const { a, b } = state.slots;
-  const pending = (a || b) && keyOf(a, b) !== state.comparedKey;
-  tray.hidden = !(pending && !formInView());
+  const type = current?.type;
+  const onPage = current && (current.name === 'list' || current.name === 'detail');
+  const items = type ? selection.items(type) : [];
+  const visible = Boolean(onPage && items.length);
+  tray.hidden = !visible;
+  document.body.classList.toggle('has-tray', visible);
+  if (!visible) return;
 
-  const fill = (el, product) => {
-    el.textContent = product ? product.productName : 'Por escolher';
-    el.classList.toggle('is-empty', !product);
-  };
-  fill($('tray-a'), a);
-  fill($('tray-b'), b);
+  const { g } = CATEGORIES[type];
+  trayItems.replaceChildren(...items.map((p) => h('li', { class: 'tray-item' },
+    h('span', { class: 'tray-name', text: shortName(p), title: p.productName }),
+    h('button', {
+      type: 'button',
+      class: 'tray-remove',
+      'aria-label': `Remover ${p.productName} da comparação`,
+      text: '×',
+      onclick: () => selection.remove(type, p.productName),
+    }))));
 
-  const button = $('tray-compare');
-  button.disabled = !(a && b);
-  button.textContent = a && b ? 'Comparar' : `Escolhe o ${a ? 'B' : 'A'}`;
+  const ready = items.length === 2;
+  trayHint.textContent = `Escolhe mais ${g.aOne} para comparar.`;
+  trayHint.hidden = ready;
+  trayCompare.hidden = !ready;
 }
 
-$('tray-compare').addEventListener('click', () => compare());
-
-/* Search --------------------------------------------------------------- */
-
-const search = initSearch({
-  form: $('search-form'),
-  results: $('search-results'),
-  pager: $('pager'),
-  pagerStatus: $('pager-status'),
-  errorEl: $('filter-error'),
-  maxRankReady,
-  onPick: (slot, product) => setSlot(slot, product),
-  sideOf,
+trayCompare.addEventListener('click', () => {
+  const [first, second] = selection.items(current.type);
+  go(paths.compare(first.productName, second.productName));
 });
 
-readUrl();
+selection.subscribe((type) => {
+  updateTray();
+  lists[type].refreshSelection();
+});
+
+route();

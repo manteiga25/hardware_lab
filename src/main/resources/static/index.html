@@ -3,180 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Comparador de CPUs</title>
-  <meta name="description" content="Compara processadores lado a lado: desempenho, especificações e quanto custa cada ponto de desempenho.">
+  <title>Hardware Lab</title>
+  <meta name="description" content="Especificações explicadas de processadores e placas gráficas, e comparação de desempenho e preço.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#conteudo">Saltar para o conteúdo</a>
+  <a class="skip-link" href="#conteudo" data-skip>Saltar para o conteúdo</a>
 
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#topo">
+      <a class="brand" href="#/cpu">
         <span class="brand-mark" aria-hidden="true"></span>
-        <span>Comparador de CPUs</span>
+        <span>Hardware Lab</span>
       </a>
       <nav class="site-nav" aria-label="Principal">
-        <a href="#comparar">Comparar</a>
-        <a href="#pesquisar">Pesquisar</a>
-        <a href="#metodo">Como calculamos</a>
+        <a href="#/cpu" data-nav="cpu">Processadores</a>
+        <a href="#/gpu" data-nav="gpu">Placas gráficas</a>
+        <a href="#/como-calculamos" data-nav="method">Como calculamos</a>
       </nav>
     </div>
   </header>
 
-  <main id="conteudo">
-    <section class="hero" id="topo" aria-labelledby="hero-title">
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <h1 id="hero-title">Compara processadores pelo desempenho e pelo preço</h1>
-          <p class="lead">Escolhe dois CPUs e vê qual é mais rápido, quanto custa cada ponto de desempenho e se a diferença compensa.</p>
+  <main id="conteudo" tabindex="-1">
+    <!-- The processor and graphics card lists are built by js/views/list.js and inserted here. -->
 
-          <form id="compare-form" class="compare-form" novalidate>
-            <div class="picker" data-slot="a">
-              <label for="pick-a">Processador A</label>
-              <div class="combo">
-                <input id="pick-a" type="text" role="combobox" autocomplete="off" spellcheck="false"
-                       aria-autocomplete="list" aria-expanded="false" aria-controls="pick-a-list"
-                       aria-describedby="compare-hint" placeholder="Ex.: Ryzen 5 5600X">
-                <ul id="pick-a-list" class="listbox" role="listbox" aria-label="Sugestões para o processador A" hidden></ul>
-              </div>
-            </div>
-            <div class="picker" data-slot="b">
-              <label for="pick-b">Processador B</label>
-              <div class="combo">
-                <input id="pick-b" type="text" role="combobox" autocomplete="off" spellcheck="false"
-                       aria-autocomplete="list" aria-expanded="false" aria-controls="pick-b-list"
-                       aria-describedby="compare-hint" placeholder="Ex.: Core i5-12600K">
-                <ul id="pick-b-list" class="listbox" role="listbox" aria-label="Sugestões para o processador B" hidden></ul>
-              </div>
-            </div>
-            <div class="compare-actions">
-              <button type="submit" class="btn btn-primary">Comparar</button>
-              <p id="compare-hint" class="hint">Escreve parte do nome e escolhe uma das sugestões.</p>
-            </div>
-            <p id="compare-error" class="form-error" role="alert" hidden></p>
-          </form>
-        </div>
+    <!-- One product (filled by js/views/detail.js) -->
+    <section class="view" data-view="detail" hidden></section>
 
-        <!-- Desktop only: filled by js/chip.js, which is never loaded on touch or small screens. -->
-        <div class="hero-visual" id="hero-visual" aria-hidden="true"></div>
-      </div>
-    </section>
+    <!-- Two products side by side (filled by js/views/compare.js) -->
+    <section class="view" data-view="compare" hidden></section>
 
-    <section class="section" id="comparar" aria-labelledby="compare-title" tabindex="-1">
-      <div class="container">
-        <h2 id="compare-title">Comparação</h2>
-
-        <div id="compare-empty" class="empty-state">
-          <p>Escolhe dois processadores no topo da página ou na pesquisa. Também podes começar por um destes exemplos:</p>
-          <div class="example-list">
-            <button type="button" class="btn btn-ghost" data-example-a="AMD Ryzen 5 5600X" data-example-b="Intel Core i5-12600K">Ryzen 5 5600X e Core i5-12600K</button>
-            <button type="button" class="btn btn-ghost" data-example-a="AMD Ryzen 7 7700X" data-example-b="Intel Core i5-13600K">Ryzen 7 7700X e Core i5-13600K</button>
-            <button type="button" class="btn btn-ghost" data-example-a="AMD Ryzen 9 7950X" data-example-b="Intel Core i9-13900K">Ryzen 9 7950X e Core i9-13900K</button>
-          </div>
-        </div>
-
-        <div id="compare-result" aria-live="polite"></div>
-      </div>
-    </section>
-
-    <section class="section section-alt" id="pesquisar" aria-labelledby="search-title">
-      <div class="container">
-        <h2 id="search-title">Pesquisar processadores</h2>
-        <p class="section-lead">Filtra a base de dados e usa os botões A e B para enviar um processador para a comparação.</p>
-
-        <form id="search-form" class="filters" novalidate>
-          <div class="field field-wide">
-            <label for="f-name">Nome</label>
-            <input id="f-name" name="name" type="search" autocomplete="off" spellcheck="false" placeholder="Ex.: Ryzen 7">
-          </div>
-          <div class="field">
-            <label for="f-brand">Marca</label>
-            <select id="f-brand" name="brand">
-              <option value="">Todas</option>
-              <option>AMD</option>
-              <option>Intel</option>
-              <option>Apple</option>
-              <option>Qualcomm</option>
-              <option>MediaTek</option>
-              <option>Samsung</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="f-tier">Desempenho mínimo</label>
-            <select id="f-tier" name="tier">
-              <option value="">Qualquer</option>
-              <option value="5">Entre os 5% mais rápidos</option>
-              <option value="10">Entre os 10% mais rápidos</option>
-              <option value="25">Entre os 25% mais rápidos</option>
-              <option value="50">Entre os 50% mais rápidos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="f-cores">Núcleos mínimos</label>
-            <input id="f-cores" name="minCoreCount" type="number" inputmode="numeric" min="1" max="256" step="1">
-          </div>
-          <div class="field">
-            <label for="f-price">Preço máximo (US$)</label>
-            <input id="f-price" name="maxCost" type="number" inputmode="decimal" min="1" step="1">
-          </div>
-          <div class="field">
-            <label for="f-sort">Ordenar por</label>
-            <select id="f-sort" name="order">
-              <option value="performance">Mais rápidos primeiro</option>
-              <option value="value">Melhor custo × performance</option>
-              <option value="cheapest">Mais baratos primeiro</option>
-              <option value="cores">Mais núcleos primeiro</option>
-              <option value="newest">Mais recentes primeiro</option>
-            </select>
-          </div>
-          <div class="field field-check">
-            <input id="f-priced" name="priced" type="checkbox">
-            <label for="f-priced">Só com preço registado</label>
-          </div>
-          <div class="filter-actions">
-            <button type="submit" class="btn btn-primary">Pesquisar</button>
-            <button type="reset" class="btn btn-ghost">Limpar filtros</button>
-          </div>
-          <p id="filter-error" class="form-error" role="alert" hidden></p>
-        </form>
-
-        <div id="search-results" class="results" aria-live="polite"></div>
-        <nav id="pager" class="pager" aria-label="Páginas de resultados" hidden>
-          <button type="button" class="btn btn-ghost" data-page="prev">Anterior</button>
-          <span class="pager-status" id="pager-status"></span>
-          <button type="button" class="btn btn-ghost" data-page="next">Seguinte</button>
-        </nav>
-      </div>
-    </section>
-
-    <section class="section" id="metodo" aria-labelledby="method-title">
-      <div class="container">
-        <h2 id="method-title">Como calculamos o custo × performance</h2>
-        <p class="section-lead">A base de dados guarda a posição de cada processador numa lista de desempenho e o preço registado. A partir daí calculamos estes valores.</p>
+    <!-- Method -->
+    <section class="view" data-view="method" aria-labelledby="method-title" hidden>
+      <div class="container page">
+        <h1 id="method-title" tabindex="-1">Como calculamos o custo × performance</h1>
+        <p class="lead">A base de dados dá a cada produto uma medida de desempenho e guarda o preço registado. A partir daí calculamos estes valores, da mesma forma para processadores e placas gráficas.</p>
 
         <div class="method-grid">
           <article class="method-item">
-            <h3>Índice de desempenho</h3>
-            <p class="formula">100 × (N + 1 − posição) ÷ N</p>
-            <p>Converte a posição no ranking numa escala de 0 a 100, em que N é a última posição da lista<span data-max-rank-note></span>. O primeiro da lista tem 100. Um índice de 75 quer dizer que é mais rápido do que cerca de 75% dos processadores registados.</p>
+            <h2>Índice de desempenho</h2>
+            <p class="formula">Processadores: 100 × (N + 1 − posição) ÷ N</p>
+            <p class="formula">Placas gráficas: pontuação ÷ 10</p>
+            <p>Os processadores têm uma posição num ranking, em que N é a última posição da lista<span data-max-rank-note></span>. As placas gráficas têm uma pontuação de 0 a 1000. As duas passam para a mesma escala de 0 a 100: um índice de 75 quer dizer mais rápido do que cerca de 75% dos produtos do mesmo tipo.</p>
           </article>
           <article class="method-item">
-            <h3>Custo por ponto de índice</h3>
+            <h2>Custo por ponto de índice</h2>
             <p class="formula">preço ÷ índice</p>
-            <p>Quanto pagas por cada ponto de desempenho. É a métrica principal de custo × performance: quanto mais baixa, mais desempenho recebes por cada dólar.</p>
+            <p>Quanto pagas por cada ponto de desempenho. É a métrica principal de custo × performance: quanto mais baixa, mais desempenho recebes por cada dólar. Só compara produtos do mesmo tipo.</p>
           </article>
           <article class="method-item">
-            <h3>Custo dos pontos extra</h3>
+            <h2>Custo dos pontos extra</h2>
             <p class="formula">diferença de preço ÷ diferença de índice</p>
-            <p>Quando o processador mais rápido também é o mais caro, mostra quanto pagas por cada ponto a mais. Se for bastante acima do custo por ponto do mais barato, o desempenho extra está caro.</p>
+            <p>Quando o mais rápido também é o mais caro, mostra quanto pagas por cada ponto a mais. Se for bastante acima do custo por ponto do mais barato, o desempenho extra está caro.</p>
           </article>
           <article class="method-item">
-            <h3>Limites dos dados</h3>
-            <p>O índice diz qual é mais rápido, mas não quanto mais rápido, porque vem de uma posição e não de um teste. No topo da lista, um ponto pode esconder uma diferença grande. Preço, turbo ou TDP a zero na base de dados significam valor desconhecido: aparecem como “sem dados” e ficam fora das contas de custo.</p>
+            <h2>Limites dos dados</h2>
+            <p>O índice diz qual é mais rápido, mas não exatamente quanto, porque vem de uma posição ou pontuação e não de um teste feito aqui. Nas placas gráficas, o preço é o de lançamento e as mais antigas não têm pontuação. Valores a zero ou em falta aparecem como “sem dados” e ficam fora das contas de custo.</p>
           </article>
         </div>
       </div>
@@ -192,10 +77,8 @@
 
   <div class="tray" id="tray" hidden>
     <div class="container tray-inner">
-      <p class="tray-slots">
-        <span class="tray-slot"><span class="side-tag">A</span> <span id="tray-a"></span></span>
-        <span class="tray-slot"><span class="side-tag">B</span> <span id="tray-b"></span></span>
-      </p>
+      <ul class="tray-items" id="tray-items" aria-label="Escolhidos para comparar"></ul>
+      <p class="tray-hint" id="tray-hint"></p>
       <button type="button" class="btn btn-primary" id="tray-compare">Comparar</button>
     </div>
   </div>

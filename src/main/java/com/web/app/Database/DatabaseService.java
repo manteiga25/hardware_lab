@@ -19,8 +19,6 @@ public class DatabaseService  {
     public List<ProductDTO> getProducts(SearchDTO searchDTO, Pageable page) {
         List<ProductEntity> products = databaseRepository.search(searchDTO, page);
 
-        System.out.println("Products found: " + products);
-
         if (products.isEmpty()) return null;
 
         return products.stream().map(ProductDTO::fromEntity).toList();

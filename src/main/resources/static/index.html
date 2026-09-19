@@ -22,7 +22,6 @@
       <nav class="site-nav" aria-label="Principal">
         <a href="#/cpu" data-nav="cpu">Processadores</a>
         <a href="#/gpu" data-nav="gpu">Placas gráficas</a>
-        <a href="#/como-calculamos" data-nav="method">Como calculamos</a>
       </nav>
     </div>
   </header>
@@ -36,42 +35,10 @@
     <!-- Two products side by side (filled by js/views/compare.js) -->
     <section class="view" data-view="compare" hidden></section>
 
-    <!-- Method -->
-    <section class="view" data-view="method" aria-labelledby="method-title" hidden>
-      <div class="container page">
-        <h1 id="method-title" tabindex="-1">Como calculamos o custo × performance</h1>
-        <p class="lead">A base de dados dá a cada produto uma medida de desempenho e guarda o preço registado. A partir daí calculamos estes valores, da mesma forma para processadores e placas gráficas.</p>
-
-        <div class="method-grid">
-          <article class="method-item">
-            <h2>Índice de desempenho</h2>
-            <p class="formula">Processadores: 100 × (N + 1 − posição) ÷ N</p>
-            <p class="formula">Placas gráficas: pontuação ÷ 10</p>
-            <p>Os processadores têm uma posição num ranking, em que N é a última posição da lista<span data-max-rank-note></span>. As placas gráficas têm uma pontuação de 0 a 1000. As duas passam para a mesma escala de 0 a 100: um índice de 75 quer dizer mais rápido do que cerca de 75% dos produtos do mesmo tipo.</p>
-          </article>
-          <article class="method-item">
-            <h2>Custo por ponto de índice</h2>
-            <p class="formula">preço ÷ índice</p>
-            <p>Quanto pagas por cada ponto de desempenho. É a métrica principal de custo × performance: quanto mais baixa, mais desempenho recebes por cada dólar. Só compara produtos do mesmo tipo.</p>
-          </article>
-          <article class="method-item">
-            <h2>Custo dos pontos extra</h2>
-            <p class="formula">diferença de preço ÷ diferença de índice</p>
-            <p>Quando o mais rápido também é o mais caro, mostra quanto pagas por cada ponto a mais. Se for bastante acima do custo por ponto do mais barato, o desempenho extra está caro.</p>
-          </article>
-          <article class="method-item">
-            <h2>Limites dos dados</h2>
-            <p>O índice diz qual é mais rápido, mas não exatamente quanto, porque vem de uma posição ou pontuação e não de um teste feito aqui. Nas placas gráficas, o preço é o de lançamento e as mais antigas não têm pontuação. Valores a zero ou em falta aparecem como “sem dados” e ficam fora das contas de custo.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-  </main>
-
   <footer class="site-footer">
     <div class="container">
       <p id="currency-note"></p>
-      <p>As especificações vêm da base de dados do projeto e podem ter erros. Confirma no site do fabricante antes de comprar.</p>
+      <p>As especificações vêm da base de dados do projeto e podem ter erros. Confirma no site do fabricante.</p>
     </div>
   </footer>
 

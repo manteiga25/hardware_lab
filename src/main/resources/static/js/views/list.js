@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import * as api from '../api.js';
 import * as fmt from '../format.js';
 import * as m from '../metrics.js';
-import { paths } from '../router.js';
+import { hasMethodPage, paths } from '../router.js';
 import { selection } from '../selection.js';
 
 const PAGE_SIZE = 20;
@@ -89,7 +89,8 @@ export function createList(category, { maxRankReady, onResults }) {
     hero,
     h('div', { class: 'container catalog' },
       form,
-      h('p', { class: 'results-note' }, `${category.list.note} `, h('a', { href: paths.method(), text: 'Como calculamos' })),
+      h('p', { class: 'results-note' }, category.list.note,
+        hasMethodPage() ? h('a', { href: paths.method(), text: ' Como calculamos' }) : null),
       results,
       pager));
 

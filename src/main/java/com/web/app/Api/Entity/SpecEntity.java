@@ -36,4 +36,7 @@ public class SpecEntity {
 
     @Column(name = "compute_rank", nullable = false, unique = true)
     private Short computeRank;
+
+    @Column(name = "category")
+    private CpuCategory category;
 }

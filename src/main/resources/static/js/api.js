@@ -56,7 +56,55 @@ export function getProduct(name, signal) {
 }
 
 export async function getPair(name, compareName, signal) {
-  return (await request('GET', 'products', { params: { name, compare_name: compareName }, signal })) ?? [];
+  return (await request('GET', 'compare', { params: { name, compare_name: compareName }, signal })) ?? [];
+}
+
+/**
+ * The agent answers as a stream of Server-Sent Events, one token per event.
+ * EventSource is not used on purpose: it reopens the connection when the stream ends (asking
+ * the same question again) and it drops the space after "data:", which would glue words
+ * together. Reading the body keeps every token exactly as it arrives.
+ */
+export async function* streamAgent(query, signal) {
+  const url = new URL('api/agent', document.baseURI);
+  url.searchParams.set('query', query);
+
+  const response = await fetch(url, {
+    signal,
+    credentials: 'same-origin',
+    headers: { Accept: 'text/event-stream' },
+  });
+  if (!response.ok) throw new ApiError(response.status);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+    let end;
+    while ((end = buffer.indexOf('\n\n')) !== -1) {
+      const event = eventText(buffer.slice(0, end));
+      buffer = buffer.slice(end + 2);
+      if (event) yield event;
+    }
+  }
+
+  const last = eventText(buffer);
+  if (last) yield last;
+}
+
+function eventText(event) {
+  return event
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    // No trimming: a leading space is part of the word.
+    .map((line) => line.slice('data:'.length))
+    .join('\n');
 }
 
 // Highest (slowest) CPU ranking position, needed to turn a position into a 0-100 index.

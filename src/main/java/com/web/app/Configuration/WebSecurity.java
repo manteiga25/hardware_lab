@@ -66,8 +66,10 @@ public class WebSecurity {
                 // Read-only site: only GET on known paths. Anything else is refused with 403.
                 // New endpoints that change data must be added here explicitly.
                 .authorizeHttpRequests(auth -> auth
+                        // Path matching is case sensitive, so /api/agent needs its own entry.
                         .requestMatchers(HttpMethod.GET,
-                                "/", "/index.html", "/favicon.svg", "/css/**", "/js/**", "/API/**").permitAll()
+                                "/", "/index.html", "/favicon.svg", "/css/**", "/js/**",
+                                "/API/**", "/api/agent", "/api/agent/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().denyAll())
 

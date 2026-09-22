@@ -4,7 +4,7 @@ import * as fmt from '../format.js';
 import * as m from '../metrics.js';
 import { categoryOf } from '../categories.js';
 import { createPicker } from '../picker.js';
-import { go, paths } from '../router.js';
+import { go, hasMethodPage, paths } from '../router.js';
 import { compareRow, missingText } from '../specs.js';
 import { backLink } from './detail.js';
 
@@ -165,7 +165,7 @@ function verdictPanel(products, names, maxRank, result) {
         [m.costPerPoint(a, maxRank), m.costPerPoint(b, maxRank)], names, 'lower', fmt.money)),
     h('p', { class: 'method-link' },
       'O índice vem de uma posição ou pontuação na base de dados e não de um teste feito aqui: mostra qual é mais rápido, mas não exatamente quanto. ',
-      h('a', { href: paths.method(), text: 'Ver como calculamos' })));
+      hasMethodPage() ? h('a', { href: paths.method(), text: 'Ver como calculamos' }) : null));
 }
 
 function specTable(products, names, category, maxRank) {

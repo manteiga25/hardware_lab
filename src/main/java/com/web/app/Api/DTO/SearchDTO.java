@@ -1,5 +1,6 @@
 package com.web.app.Api.DTO;
 
+import com.web.app.Api.Entity.CpuCategory;
 import com.web.app.Api.Entity.FormFactor;
 
 import java.math.BigDecimal;
@@ -38,6 +39,9 @@ public record SearchDTO (String productName,
                          LocalDate maxReleaseDate,
 
                          Boolean isCpu,
+
+                         // CPU only
+                         CpuCategory category,
 
                          // GPU only
                          FormFactor formFactor,
@@ -81,6 +85,9 @@ public record SearchDTO (String productName,
 
         Boolean isCpu = toBoolean(map.get("isCpu"));
 
+        String categoryText = toText(map.get("category"));
+        CpuCategory category = categoryText == null ? null : CpuCategory.fromDbValue(categoryText);
+
         String formFactorText = toText(map.get("formFactor"));
         FormFactor formFactor = formFactorText == null ? null : FormFactor.fromDbValue(formFactorText);
         Integer minMemoryMb = toInteger(map.get("minMemoryMb"));
@@ -119,6 +126,8 @@ public record SearchDTO (String productName,
                 maxReleaseDate,
 
                 isCpu,
+
+                category,
 
                 formFactor,
                 minMemoryMb,

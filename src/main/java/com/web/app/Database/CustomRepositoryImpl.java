@@ -91,6 +91,10 @@ public class CustomRepositoryImpl implements CustomRepository {
             predicates.add(cb.equal(spec.get("hasHyperthread"), query.hasHyperthread()));
         }
 
+        if (query.category() != null) {
+            predicates.add(cb.equal(spec.get("category"), query.category()));
+        }
+
         addRange(cb, predicates, spec.<BigDecimal>get("baseClock"),
                 query.minBaseClock(), query.maxBaseClock());
 

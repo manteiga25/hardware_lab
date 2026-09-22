@@ -34,14 +34,24 @@ public class ProductRoute {
         return ResponseEntity.ok(product);
     }
 
-    @GetMapping("/products")
+    @GetMapping("/compare")
     private ResponseEntity<List<ProductDTO>> getProduct(@RequestParam String name, @RequestParam String compare_name) {
 
-        List<ProductDTO> product = productService.getProducts(name, compare_name);
+        List<ProductDTO> product = productService.getCompare(name, compare_name);
 
         if (product == null) return ResponseEntity.notFound().build();
         // A CPU cannot be compared with a GPU. Objects.equals compares the Boolean values, not references.
         if (!Objects.equals(product.getFirst().isCpu(), product.getLast().isCpu())) return ResponseEntity.badRequest().build();
+
+        return ResponseEntity.ok(product);
+    }
+
+    @GetMapping("/products")
+    private ResponseEntity<List<ProductDTO>> getProducts(@RequestParam List<String> names) {
+
+        List<ProductDTO> product = productService.getProducts(names);
+
+        if (product == null) return ResponseEntity.notFound().build();
 
         return ResponseEntity.ok(product);
     }

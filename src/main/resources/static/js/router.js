@@ -11,6 +11,7 @@ export const paths = {
   list: (type = 'cpu') => `#/${type}`,
   detail: (product) => `#/${typeOf(product)}/${enc(product.productName)}`,
   compare: (first, second) => `#/comparar/${enc(first)}/${enc(second)}`,
+  assistant: () => '#/assistente',
   method: () => '#/como-calculamos',
 };
 
@@ -19,6 +20,7 @@ const ROUTES = [
   ['list', /^\/(cpu|gpu)$/],
   ['detail', /^\/(cpu|gpu)\/([^/]+)$/],
   ['compare', /^\/comparar\/([^/]+)\/([^/]+)$/],
+  ['assistant', /^\/assistente$/],
   ['method', /^\/como-calculamos$/],
 ];
 
@@ -45,3 +47,6 @@ export function parse(hash) {
 export function go(hash) {
   if (location.hash !== hash) location.hash = hash;
 }
+
+// The "Como calculamos" page is optional: only link to it when index.html has it.
+export const hasMethodPage = () => Boolean(document.querySelector('[data-view="method"]'));

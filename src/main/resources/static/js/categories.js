@@ -4,7 +4,7 @@
 
 import * as fmt from './format.js';
 import * as m from './metrics.js';
-import { CPU_SPEC_GROUPS, GPU_SPEC_GROUPS, formFactorLabel } from './specs.js';
+import { CPU_SPEC_GROUPS, GPU_SPEC_GROUPS, cpuCategoryLabel, formFactorLabel } from './specs.js';
 
 const TIERS = [5, 10, 25, 50];
 
@@ -45,6 +45,7 @@ const cpu = {
   pickerPlaceholder: 'Escreve o nome de outro processador',
   filters: [
     { type: 'select', name: 'brand', label: 'Marca', options: [['', 'Todas'], 'AMD', 'Intel', 'Apple', 'Qualcomm', 'MediaTek', 'Samsung'] },
+    { type: 'select', name: 'category', label: 'Tipo', options: [['', 'Todos'], ['Desktop', 'Desktop'], ['Laptop', 'Portátil'], ['Server', 'Servidor'], ['Embedded', 'Embutido / IoT'], ['Mobile', 'Telemóvel / tablet']] },
     { type: 'select', name: 'tier', label: 'Desempenho', options: [['', 'Qualquer'], ...TIERS.map((t) => [String(t), `Entre os ${t}% mais rápidos`])] },
     { type: 'number', name: 'minCoreCount', label: 'Núcleos mínimos', min: 1, max: 256, step: 1, integer: true, error: 'Os núcleos mínimos têm de ser um número inteiro maior do que zero.' },
     PRICE_FIELD,
@@ -60,6 +61,7 @@ const cpu = {
   toParams(values, maxRank) {
     const params = {};
     if (values.brand) params.brand = values.brand;
+    if (values.category) params.category = values.category;
     if (values.minCoreCount) params.minCoreCount = values.minCoreCount;
     if (values.maxCost) params.maxCost = values.maxCost;
     // Ranking positions: the top 10% are positions 1 to maxRank / 10.
@@ -76,9 +78,14 @@ const cpu = {
       cell: (p) => [`${fmt.number(m.cores(p) ?? 0)} / ${fmt.number(m.threads(p) ?? 0)}`],
     },
   ],
-  subline: (p) => [p.family || p.brand, m.releaseOf(p) && fmt.release(m.releaseOf(p), true)],
+  subline: (p) => [
+    p.family || p.brand,
+    cpuCategoryLabel(m.cpuCategory(p))?.toLowerCase(),
+    m.releaseOf(p) && fmt.release(m.releaseOf(p), true),
+  ],
   headerMeta: (p) => [
-    m.socket(p) && `Socket ${m.socket(p)}`,
+    cpuCategoryLabel(m.cpuCategory(p)),
+    m.socket(p) && `socket ${m.socket(p)}`,
     m.releaseOf(p) && `lançado em ${fmt.release(m.releaseOf(p))}`,
   ],
   specGroups: CPU_SPEC_GROUPS,

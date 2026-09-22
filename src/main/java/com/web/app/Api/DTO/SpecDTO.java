@@ -1,5 +1,6 @@
 package com.web.app.Api.DTO;
 
+import com.web.app.Api.Entity.CpuCategory;
 import com.web.app.Api.Entity.SpecEntity;
 
 import java.math.BigDecimal;
@@ -11,7 +12,8 @@ public record SpecDTO(
         BigDecimal baseClock,
         BigDecimal boostClock,
         Short tdp,
-        Short computeRank
+        Short computeRank,
+        CpuCategory category
 ) {
 
     public static SpecDTO fromEntity(SpecEntity spec) {
@@ -22,7 +24,8 @@ public record SpecDTO(
                 spec.getBaseClock(),
                 spec.getBoostClock(),
                 spec.getTdp(),
-                spec.getComputeRank()
+                spec.getComputeRank(),
+                spec.getCategory()
         );
     }
 }

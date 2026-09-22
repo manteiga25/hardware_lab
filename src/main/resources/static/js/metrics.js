@@ -27,6 +27,7 @@ export const threads = (p) => positive(p.spec?.threadCount);
 export const baseClock = (p) => positive(p.spec?.baseClock);
 export const boostClock = (p) => positive(p.spec?.boostClock);
 export const socket = (p) => (p.socketName && p.socketName !== 'Unknown' ? p.socketName : null);
+export const cpuCategory = (p) => p.spec?.category ?? null;
 
 // The "has_hyperthread" column is unreliable (0 for 16-core/32-thread Ryzen parts),
 // so SMT is derived from the thread and core counts instead.

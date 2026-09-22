@@ -5,6 +5,7 @@ import { CATEGORIES, categoryOf } from './categories.js';
 import { go, isRoute, parse, paths } from './router.js';
 import { selection } from './selection.js';
 import { placeIllustration, showOnIllustration } from './illustration-host.js';
+import { createAssistant } from './views/assistant.js';
 import { createList } from './views/list.js';
 import { renderDetail } from './views/detail.js';
 import { renderCompare } from './views/compare.js';
@@ -14,7 +15,9 @@ const main = $('conteudo');
 
 const maxRankReady = api.getMaxRank()
   .then((value) => {
-    if (value) document.querySelector('[data-max-rank-note]').textContent = ` (neste momento, ${number(value)})`;
+    // Only there when the "Como calculamos" page is part of index.html.
+    const note = document.querySelector('[data-max-rank-note]');
+    if (value && note) note.textContent = ` (neste momento, ${number(value)})`;
     return value;
   })
   .catch(() => null);
@@ -37,6 +40,9 @@ const lists = Object.fromEntries(Object.values(CATEGORIES).map((category) => {
   main.insertBefore(list.root, main.firstChild);
   return [category.key, list];
 }));
+
+const assistant = createAssistant();
+main.append(assistant.root);
 
 const views = Object.fromEntries([...document.querySelectorAll('[data-view]')].map((el) => [el.dataset.view, el]));
 
@@ -72,6 +78,12 @@ async function route() {
   current = next;
 
   const viewKey = name === 'list' ? `list-${type}` : name;
+  // A page that is not in index.html (the method page is optional) falls back to the list.
+  if (!views[viewKey]) {
+    go(paths.list());
+    return;
+  }
+
   for (const [key, el] of Object.entries(views)) el.hidden = key !== viewKey;
   updateNav();
   updateTray();
@@ -94,6 +106,10 @@ async function route() {
       const products = await renderCompare(views.compare, params[0], params[1], context);
       if (products && current === next) next.type = categoryOf(products[0]).key;
     }
+    if (name === 'assistant') {
+      document.title = `Assistente | ${SITE_NAME}`;
+      assistant.enter();
+    }
     if (name === 'method') document.title = `Como calculamos | ${SITE_NAME}`;
 
     if (current === next) {
@@ -114,7 +130,7 @@ function updateNav() {
   document.querySelectorAll('[data-nav]').forEach((link) => {
     const key = link.dataset.nav;
     if (current.name === 'list' && key === current.type) link.setAttribute('aria-current', 'page');
-    else if (current.name === 'method' && key === 'method') link.setAttribute('aria-current', 'page');
+    else if ((current.name === 'method' || current.name === 'assistant') && key === current.name) link.setAttribute('aria-current', 'page');
     else if ((current.name === 'detail' || current.name === 'compare') && key === current.type) link.setAttribute('aria-current', 'true');
     else link.removeAttribute('aria-current');
   });

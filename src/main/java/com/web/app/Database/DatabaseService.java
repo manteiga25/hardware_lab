@@ -31,8 +31,16 @@ public class DatabaseService  {
 
     }
 
-    public List<ProductDTO> getProducts(String prod_name, String prod_compare_name) {
+    public List<ProductDTO> getCompare(String prod_name, String prod_compare_name) {
         List<ProductEntity> products = databaseRepository.findByProductNameIn(new String[]{prod_name, prod_compare_name});
+
+        if (products.isEmpty()) return null;
+
+        return products.stream().map(ProductDTO::fromEntity).toList();
+    }
+
+    public List<ProductDTO> getProducts(List<String> names) {
+        List<ProductEntity> products = databaseRepository.findByProductNameIn(names.toArray(new String[0]));
 
         if (products.isEmpty()) return null;
 

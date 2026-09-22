@@ -36,6 +36,18 @@ const sameOrDifferent = (same, different) => (a, b) => {
   return a === b ? { text: same, muted: true } : { text: different };
 };
 
+// spec.category, as the API sends it (the names of the CpuCategory enum).
+const CPU_CATEGORIES = {
+  Desktop: 'Desktop',
+  Laptop: 'Portátil',
+  Server: 'Servidor',
+  Embedded: 'Embutido / IoT',
+  Mobile: 'Telemóvel / tablet',
+  Unknown: 'Desconhecido',
+};
+
+export const cpuCategoryLabel = (value) => CPU_CATEGORIES[value] ?? null;
+
 export const CPU_SPEC_GROUPS = [
   {
     title: 'Desempenho',
@@ -135,6 +147,13 @@ export const CPU_SPEC_GROUPS = [
   {
     title: 'Plataforma e consumo',
     rows: [
+      {
+        label: 'Tipo',
+        help: 'Para que tipo de máquina o processador foi feito. Os de portátil e os embutidos costumam vir soldados à placa, por isso não se compram à parte para montar numa torre.',
+        get: (p) => m.cpuCategory(p),
+        show: (v) => CPU_CATEGORIES[v] ?? v,
+        compare: sameOrDifferent('Mesmo tipo', 'Tipos diferentes'),
+      },
       {
         label: 'TDP',
         help: 'Calor que o processador liberta em carga, em watts. Dá uma ideia do consumo e do cooler necessário: mais baixo gasta menos energia e é mais fácil de arrefecer.',
